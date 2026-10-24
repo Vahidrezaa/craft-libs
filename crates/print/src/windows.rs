@@ -12,7 +12,11 @@
 
 use std::io::Write as _;
 
-use winprint::printer::{PrinterDevice, WinPdfPrinter};
+use winprint::printer::PrinterDevice;
+#[cfg(feature = "pdfium-backend")]
+use winprint::printer::PdfiumPrinter as BackendPrinter;
+#[cfg(not(feature = "pdfium-backend"))]
+use winprint::printer::WinPdfPrinter as BackendPrinter;
 use winprint::ticket::document::{NS_PSK, OwnedName, PrintFeature, PrintTicketDocument, reader::ParsableXmlDocument as _};
 use winprint::ticket::{FeatureOptionPack as _, PageMediaSize, PrintCapabilities, PrintTicket, PrintTicketBuilder};
 
@@ -154,7 +158,7 @@ pub(crate) fn submit_with_progress(pdf: &[u8], job: &Job, progress: &mut dyn FnM
         let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&path).map_err(written)?;
         file.write_all(updated.as_deref().unwrap_or(pdf)).map_err(written)?;
         drop(file);
-        WinPdfPrinter::new(device)
+        BackendPrinter::new(device)
             .print_with_progress(&path, ticket, |processed, total| {
                 // Page acceptance is distinct from terminal job success. The callback
                 // drains on the submitter's thread, so it can retain non-Send UI state.
